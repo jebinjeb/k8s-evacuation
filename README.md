@@ -74,7 +74,7 @@ flowchart TD
     style B fill:#bbf,stroke:#333
     style H fill:#fbb,stroke:#333
 
-
+```
 
 
 ## 📊 Metrics (Prometheus Pushgateway)
