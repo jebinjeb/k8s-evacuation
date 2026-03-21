@@ -189,6 +189,42 @@ def wait_until_desired_state(kind, name, namespace, owner_uid,
 
     raise TimeoutError(f"{kind}/{name} failed desired state")
 
+# -----------------------------
+# Resource-based Sorting
+# -----------------------------
+def get_pod_resource_score(pod):
+    cpu = 0
+    memory = 0
+
+    if not pod.spec.containers:
+        return 0
+
+    for c in pod.spec.containers:
+        resources = c.resources.requests or {}
+
+        cpu_val = resources.get("cpu", "0")
+        mem_val = resources.get("memory", "0")
+
+        # CPU → millicores
+        try:
+            if isinstance(cpu_val, str) and "m" in cpu_val:
+                cpu += int(cpu_val.replace("m", ""))
+            else:
+                cpu += int(float(cpu_val) * 1000)
+        except Exception:
+            pass
+
+        # Memory → Mi
+        try:
+            if isinstance(mem_val, str):
+                if "Mi" in mem_val:
+                    memory += int(mem_val.replace("Mi", ""))
+                elif "Gi" in mem_val:
+                    memory += int(mem_val.replace("Gi", "")) * 1024
+        except Exception:
+            pass
+
+    return (cpu * 2) + memory
 
 # -----------------------------
 # Eviction
@@ -304,7 +340,7 @@ class ProgressTracker:
 # -----------------------------
 # Evacuation Logic
 # -----------------------------
-def evacuate_group(kind, name, ns, pods, batch_size, tracker, dry_run):
+def evacuate_group(kind, name, ns, pods, batch_size, tracker, dry_run, strategy=args.eviction_strategy):
 
     if kind == "orphan":
         log.warning(f"[SKIP] Orphan workload {name}")
@@ -316,12 +352,26 @@ def evacuate_group(kind, name, ns, pods, batch_size, tracker, dry_run):
 
     wait_until_desired_state(kind, name, ns, owner_uid)
 
+
+    reverse = True if strategy == "high" else False
+
+    # -----------------------------
+    # Sorting Logic
+    # -----------------------------
     if kind == "StatefulSet":
+        # Preserve strict ordering for StatefulSets
         try:
             pods = sorted(pods, key=lambda p: int(p.metadata.name.split("-")[-1]))
+            log.info("[ORDER] StatefulSet ordinal order applied")
         except Exception:
             log.warning("Failed to sort StatefulSet pods")
+    else:
+        pods = sorted(pods, key=get_pod_resource_score, reverse=reverse)
+        log.info(f"[ORDER] Pods sorted by resource usage ({'high→low' if reverse else 'low→high'})")
 
+    # -----------------------------
+    # Batching
+    # -----------------------------
     if batch_size <= 0:
         batches = [pods]
     elif batch_size == 1:
@@ -329,7 +379,12 @@ def evacuate_group(kind, name, ns, pods, batch_size, tracker, dry_run):
     else:
         batches = [pods[i:i + batch_size] for i in range(0, len(pods), batch_size)]
 
+    # -----------------------------
+    # Evacuation Loop
+    # -----------------------------
     for batch in batches:
+        log.info(f"[BATCH] Processing {len(batch)} pods")
+
         for pod in batch:
             evict_pod(pod, dry_run=dry_run)
             tracker.evicted += 1
@@ -340,7 +395,6 @@ def evacuate_group(kind, name, ns, pods, batch_size, tracker, dry_run):
                 wait_for_replacement(pod, pod.spec.node_name)
 
         wait_until_desired_state(kind, name, ns, owner_uid)
-
 
 # -----------------------------
 # Main
@@ -355,6 +409,7 @@ def main():
     parser.add_argument("--uncordon", action="store_true")
     parser.add_argument("--pushgateway")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--eviction-strategy", choices=["high", "low"], default="high")
 
     args = parser.parse_args()
 
