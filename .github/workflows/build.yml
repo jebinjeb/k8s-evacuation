@@ -33,7 +33,7 @@ jobs:
           
       # Step 5: Upload artifact
       - name: Upload binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: k8s-evacuator-binary
           path: dist/k8s_evacuator
