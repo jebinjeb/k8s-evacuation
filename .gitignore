@@ -1,0 +1,21 @@
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+venv/
+
+# pytest / test reports
+reports/
+*.log
+
+# VSCode or other IDE configs (optional)
+.vscode/
+.idea/
+
+# Ignore temporary files
+*.swp
+*.tmp
+
+*.venv
+.venv
