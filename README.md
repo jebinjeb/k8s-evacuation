@@ -77,4 +77,24 @@ flowchart TD
 
 
 
+## 📊 Metrics (Prometheus Pushgateway)
 
+This tool can optionally push per-pod evacuation metrics to a Prometheus Pushgateway if `prometheus_client` is installed and the `--pushgateway` flag is provided.
+
+### Metric
+
+| Metric Name                | Labels                     | Description                                                                 |
+|-----------------------------|----------------------------|-----------------------------------------------------------------------------|
+| `evacuation_pod_status`     | `pod`, `namespace`, `status` | Tracks the status of each pod during evacuation. `status` can be: `evicted`, `ready`, or `failed`. |
+
+### Status Labels
+
+- **evicted** → Pod eviction has been initiated.  
+- **ready** → Replacement pod is running and ready.  
+- **failed** → Pod eviction failed or replacement pod did not become ready.  
+
+### Usage
+
+```bash
+python k8s_evacuator.py --node <node_name> --pushgateway http://pushgateway.example.com:9091
+```
