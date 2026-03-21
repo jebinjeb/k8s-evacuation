@@ -31,7 +31,7 @@ A Python-based tool to safely evacuate pods from a Kubernetes node, with **intel
 
 ```bash
 pip install kubernetes prometheus-client
-
+```
 
 ## 🏗️ Architecture
 
