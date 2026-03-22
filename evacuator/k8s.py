@@ -5,6 +5,7 @@ from collections import defaultdict
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 
+
 log = logging.getLogger(__name__)
 core = client.CoreV1Api()
 apps = client.AppsV1Api()
@@ -20,12 +21,12 @@ SLEEP_INTERVAL = 5
 # -----------------------------
 # Node Operations
 # -----------------------------
-def cordon_node(node_name, dry_run=False):
+def cordon_node(core, node_name, dry_run=False):
     log.info(f"Cordoning node {node_name}")
     if not dry_run:
         core.patch_node(node_name, {"spec": {"unschedulable": True}})
 
-def uncordon_node(node_name, dry_run=False):
+def uncordon_node(core, node_name, dry_run=False):
     log.info(f"Uncordoning node {node_name}")
     if not dry_run:
         core.patch_node(node_name, {"spec": {"unschedulable": False}})
@@ -45,7 +46,7 @@ def is_job_pod(pod):
 def is_terminal_pod(pod):
     return pod.status.phase in ["Succeeded", "Failed"]
 
-def get_pods_on_node(node_name):
+def get_pods_on_node(core, node_name):
     pods = core.list_pod_for_all_namespaces(field_selector=f"spec.nodeName={node_name}").items
     result = []
     for p in pods:
