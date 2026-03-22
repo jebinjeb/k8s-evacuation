@@ -25,6 +25,7 @@ def main():
     parser.add_argument("--pushgateway")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--eviction-strategy", choices=["high", "low"], default="high")
+    parser.add_argument("--group-strategy", choices=["owner", "spread"], default="spread", help="Grouping strategy for evacuation")
     args = parser.parse_args()
 
     # Load config FIRST
