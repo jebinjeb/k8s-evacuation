@@ -4,15 +4,24 @@ from k8s import wait_until_desired_state, get_pod_resource_score, evict_pod, wai
 
 log = logging.getLogger(__name__)
 
-def evacuate_group(kind, name, ns, pods, batch_size, tracker, dry_run, strategy="high"):
+def evacuate_group(kind, name, ns, pods, batch_size, tracker, dry_run, strategy="high", max_batches=None):
     if kind == "orphan":
         log.warning(f"[SKIP] Orphan workload {name}")
         return
+
+    if not pods:
+        log.warning(f"[SKIP] No pods for {kind}/{name}")
+        return
+
+    # Apply max_batches only for spread strategy
+    if strategy != "spread":
+        max_batches = None
 
     owner_uid = pods[0].metadata.owner_references[0].uid
     log.info(f"[GROUP] {kind}/{name} ({ns}) - {len(pods)} pods")
 
     wait_until_desired_state(kind, name, ns, owner_uid)
+
     reverse = strategy == "high"
 
     # Sorting
@@ -35,8 +44,15 @@ def evacuate_group(kind, name, ns, pods, batch_size, tracker, dry_run, strategy=
         batches = [pods[i:i + batch_size] for i in range(0, len(pods), batch_size)]
 
     # Evacuation loop
+    batch_count = 0
+
     for batch in batches:
-        log.info(f"[BATCH] Processing {len(batch)} pods")
+        if max_batches is not None and batch_count >= max_batches:
+            log.info(f"[STOP] Reached max_batches={max_batches}, exiting early ({len(batches)-batch_count} batches remaining)")
+            break
+
+        log.info(f"[BATCH {batch_count+1}] Processing {len(batch)} pods")
+
         for pod in batch:
             evict_pod(pod, dry_run=dry_run)
             tracker.evicted += 1
@@ -47,3 +63,7 @@ def evacuate_group(kind, name, ns, pods, batch_size, tracker, dry_run, strategy=
                 wait_for_replacement(pod, pod.spec.node_name)
 
         wait_until_desired_state(kind, name, ns, owner_uid)
+
+        batch_count += 1
+
+    return

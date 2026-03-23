@@ -36,6 +36,7 @@ def main():
         default="spread",
         help="Grouping strategy for evacuation"
     )
+    max_batches = args.max_batches if args.group_strategy == "spread" else None
     args = parser.parse_args()
 
     # Load Kubernetes config FIRST
@@ -67,7 +68,8 @@ def main():
                     args.batch_size,
                     tracker,
                     args.dry_run,
-                    strategy=args.eviction_strategy
+                    strategy=args.eviction_strategy,
+                    max_batches=max_batches   
                 )
 
         elif args.group_strategy == "spread":
