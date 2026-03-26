@@ -7,12 +7,52 @@
 ![Contributions](https://img.shields.io/badge/contributions-welcome-brightgreen)
 ![Maintenance](https://img.shields.io/badge/maintained-yes-green)
 
-> Intelligent, resource-aware Kubernetes node evacuation tool (better than `kubectl drain`)
+> 🧠 A smarter, workload-aware alternative to kubectl drain using the Kubernetes Eviction API
 
 A Python-based tool to safely evacuate pods from a Kubernetes node, with **intelligent pod ordering, batch support, StatefulSet handling**, optional **Prometheus metrics**, and live CLI progress tracking.
 
 ---
 
+## ✨ Why not just `kubectl drain`?
+
+While `kubectl drain` is safe, it is **not workload-aware**:
+
+- Evicts pods in a mostly **flat / unordered way**
+- No control over **batching strategies**
+- No awareness of **resource impact per workload**
+- Limited visibility into **progress and recovery**
+
+👉 This tool solves these problems with **controlled, observable, and intelligent evacuation**.
+
+---
+
+## ⚙️ Eviction Strategy (Production-Safe)
+
+This tool uses the **Kubernetes Eviction API** — the same mechanism as `kubectl drain`.
+
+### ✅ Guarantees
+
+- ✅ Graceful pod eviction (no abrupt termination)  
+- ✅ Respects **PodDisruptionBudgets (PDB)**  
+- ✅ Waits for **replacement pods to become Ready**  
+- ✅ Ensures workloads reach **desired state before continuing**  
+- ❌ Does **NOT** force delete pods by default  
+
+---
+
+### ⚙️ Behavior
+
+- Uses **`policy/v1` Eviction API**
+- Retries when blocked by PDB (`429 Too Many Requests`)
+- Supports configurable fallback strategies:
+  - Graceful delete
+  - Force delete *(optional, last resort)*
+
+---
+
+> ⚠️ Designed for **zero-downtime or minimal-disruption operations** in production environments.
+
+---
 ## Features
 
 - **Safe pod evacuation** without modifying Deployment/StatefulSet specs.  
