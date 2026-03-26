@@ -80,12 +80,60 @@ This tool uses the **Kubernetes Eviction API** — the same mechanism as `kubect
   - Available CPU / memory
 - Consider per-workload max-unavailable in spread mode to avoid evicting all replicas at once.
 
+## 🚧 Experimental / In-Progress Features
+
+The following features are under development and may evolve:
+
+### 🔹 `--batch-size 0` (Dynamic Batching)
+Automatically calculates a safe batch size based on workload size.
+
+- Adapts eviction speed to the number of replicas
+- Prevents over-eviction of small workloads
+- Designed to maintain minimum availability during evacuation
+
+---
+
+### ⚡ `--evict-all-safe` (Fast Path Eviction)
+Evicts all pods in a workload at once when considered safe.
+
+- Useful for stateless or highly replicated workloads
+- Skips batching for faster node evacuation
+- Automatically avoids unsafe scenarios (e.g., StatefulSets)
+
+---
+
+### 🛡️ `--respect-pdb` (PDB-Aware Eviction)
+Adjusts eviction behavior based on PodDisruptionBudgets.
+
+- Uses Kubernetes PDB limits to determine safe eviction count
+- Prevents disruption beyond allowed thresholds
+- Aligns evacuation strategy with cluster safety policies
+
+---
+
+> ⚠️ These features are experimental and may change in future releases.
 
 
-## Installation
+## 📦 Installation
+
+### 🔹 Prerequisites
+
+- Python **3.8+**
+- Access to a Kubernetes cluster
+- `kubeconfig` configured (e.g., `~/.kube/config`)  
+  or running inside a cluster (in-cluster config)
+
+---
+
+### 🔹 Install Dependencies
 
 ```bash
 pip install kubernetes prometheus-client
+```
+
+### 🔹 Run the Tool
+```bash
+python k8s_evacuator.py --node <node_name>
 ```
 
 ## 🏗️ Architecture
