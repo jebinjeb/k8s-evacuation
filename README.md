@@ -140,34 +140,52 @@ python k8s_evacuator.py --node <node_name>
 
 ```mermaid
 flowchart TD
-    A[User CLI] --> B[Evacuator Script]
+    A[User CLI] --> B[Evacuator Engine]
 
     B --> C[Cordon Node]
     B --> D[Fetch Pods on Node]
-    B --> E[Group by Owner]
 
-    E --> F[Sort Pods]
-    F -->|Resource-aware| G[Batching Engine]
+    D --> E[Filter Pods]
+    E --> F{Grouping Strategy}
 
-    G --> H[Evict Pods]
-    H --> I[API Server]
+    F -->|owner| G[Group by Workload]
+    F -->|spread| H[Spread Across Workloads]
 
-    I --> J[Scheduler]
-    J --> K[New Node Placement]
+    G --> I[Sort Pods]
+    H --> I
 
-    K --> L[Replacement Pods]
-    L --> M[Readiness Check]
+    I --> J{Batching Strategy}
 
-    M --> N[Desired State Validation]
+    J -->|fixed| K[Static Batching]
+    J -->|dynamic| L[Dynamic Batch Calculation]
+    J -->|evict-all-safe| M[Fast Path Eviction]
 
-    B --> O[Prometheus Pushgateway]
-    O --> P[Metrics]
+    K --> N[Eviction Loop]
+    L --> N
+    M --> N
+
+    N --> O[Evict via Eviction API]
+
+    O -->|PDB Block (429)| P[Retry / Backoff]
+    P --> O
+
+    O --> Q[Scheduler]
+    Q --> R[New Pod Placement]
+
+    R --> S[Replacement Pods]
+    S --> T[Readiness Check]
+
+    T --> U[Desired State Validation]
+
+    U -->|Not Ready| N
+    U -->|Ready| V[Next Batch]
+
+    B --> W[Prometheus Pushgateway]
+    W --> X[Metrics]
 
     style A fill:#f9f,stroke:#333
     style B fill:#bbf,stroke:#333
-    style H fill:#fbb,stroke:#333
-
-```
+    style O fill:#fbb,stroke:#333
 
 
 ## 📊 Metrics (Prometheus Pushgateway)
